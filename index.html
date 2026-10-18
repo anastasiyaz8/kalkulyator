@@ -560,6 +560,17 @@ h1,.h1like{margin:0;font-family:var(--font-display);font-weight:500;font-size:34
 (function(){
 'use strict';
 var tg = (window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData !== undefined) ? window.Telegram.WebApp : null;
+/* Связь с ботом: только факты «дошёл до результата» и «нажал подарок». Цифры человека никуда не отправляются */
+var BOT_API = '';
+try { var q = new URLSearchParams(location.search).get('api'); if(q && /^https:\/\/script\.google(usercontent)?\.com\//.test(q)) BOT_API = q; } catch(e){}
+function botSend(action){
+  try{
+    var init = tg && tg.initData; if(!BOT_API || !init) return;
+    fetch(BOT_API, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, keepalive:true,
+      body: JSON.stringify({ action: action, initData: init, data: {} }) }).catch(function(){});
+  }catch(e){}
+}
+var calcReported = false;
 var RM = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /* ================= ДАННЫЕ И ФОРМУЛЫ ================= */
@@ -770,7 +781,7 @@ function runCalc(){
   st.res = compute(st.inp);           /* настоящий расчёт — до анимации */
   busy = true; setBusy(true);
   go(3);
-  playLoader(function(){ busy = false; setBusy(false); go(4); renderEnergy(); });
+  playLoader(function(){ busy = false; setBusy(false); go(4); renderEnergy(); if(!calcReported){ calcReported = true; botSend('calc_done'); } });
 }
 $('calc').addEventListener('click', runCalc);
 function setBusy(b){ ['next1','calc','save','edit','recalc'].forEach(function(id){ $(id).disabled = b; }); }
@@ -933,6 +944,7 @@ $('save').addEventListener('click', function(){
 });
 $('giftBtn').addEventListener('click', function(e){
   haptic();
+  botSend('calc_gift');
   if(tg && tg.openLink){ e.preventDefault(); try{ tg.openLink(this.href); }catch(err){ window.open(this.href, '_blank'); } }
 });
 $('edit').addEventListener('click', function(){ if(busy) return; renderFields(); updateNext(); go(1, true); });
